@@ -4,6 +4,8 @@ var TYPES = require('tedious').TYPES;
 const config = require('../utilities/config');
 
 function getStudents(req, res) {
+
+    //res.send([]).end();
     var connection = new Connection(config);
 
     connection.connect((err) => {
@@ -27,27 +29,24 @@ function getStudents(req, res) {
                     }
                 });
             // Print the rows read
-            var result = "";
             let arr = [];
             request.on('row', function(columns) {
                 let obj = {
 
                 }
-                console.log(columns);
                 columns.forEach(function(column) {
                     if (column.value === null) {
                         console.log('NULL');
                     } else {
-                        result += column.value + " ";
                         column.metadata.colName
                         obj[column.metadata.colName] = column.value;
                     }
                 });
                 arr.push(obj);
-                console.log(result);
-                console.log(arr);
-                result = "";
-                res.send(arr).end();
+            });
+
+            request.on('requestCompleted', () => {
+                res.json(arr).end();
             });
             // Execute SQL statement
             connection.execSql(request);
@@ -85,6 +84,7 @@ function insertStudent(req, res) {
                 (err, rowCount, rows) => {
                     if (err) {
                         console.log(err.stack)
+                        errorHandller(res)
                     }
                     if (rowCount === 1) {
                         res.send({
@@ -109,11 +109,98 @@ function insertStudent(req, res) {
 }
 
 function updateStudent(req, res) {
+    const connection = new Connection(config);
 
+    connection.connect((err) => {
+        if (err) {
+            console.log(err.stack)
+            errorHandller(res)
+            throw err;
+        } else {
+            console.log("Connection Success")
+        }
+    })
+
+    connection.on('connect', (err) => {
+        if (err) {
+            console.log(err.stack)
+            errorHandller(res)
+            throw err;
+        } else {
+            let request = new Request(
+                `update students set name=@name where id=@id;`,
+                (err, rowCount, rows) => {
+                    if (err) {
+                        console.log(err.stack)
+                        errorHandller(res)
+                    }
+                    if (rowCount === 1) {
+                        res.send({
+                            status: "success",
+                            id: req.body.id
+                        }).end()
+                    }
+                }
+            )
+
+            request.addParameter('id', TYPES.Int, req.params.id);
+            request.addParameter('name', TYPES.VarChar, req.body.name);
+
+            connection.execSql(request)
+        }
+    })
+
+    connection.on('end', () => {
+        console.log('Connection closed');
+        connection.close();
+    })
 }
 
 function deleteStudent(req, res) {
+    const connection = new Connection(config);
 
+    connection.connect((err) => {
+        if (err) {
+            console.log(err.stack)
+            errorHandller(res)
+            throw err;
+        } else {
+            console.log("Connection Success")
+        }
+    })
+
+    connection.on('connect', (err) => {
+        if (err) {
+            console.log(err.stack)
+            errorHandller(res)
+            throw err;
+        } else {
+            let request = new Request(
+                `delete from students where id=@id;`,
+                (err, rowCount, rows) => {
+                    if (err) {
+                        console.log(err.stack)
+                        errorHandller(res)
+                    }
+                    if (rowCount === 1) {
+                        res.send({
+                            status: "success",
+                            id: req.body.id
+                        }).end()
+                    }
+                }
+            )
+
+            request.addParameter('id', TYPES.Int, req.params.id);
+
+            connection.execSql(request)
+        }
+    })
+
+    connection.on('end', () => {
+        console.log('Connection closed');
+        connection.close();
+    })
 }
 
 function errorHandller(res) {
